@@ -1,22 +1,27 @@
 #!/bin/bash
 
-# Configuration: Minutes of inactivity before locking
-IDLE_TIME=15
+# Configuration
+IDLE_MINUTES=15
+CHECK_INTERVAL=300
 
 while true; do
-    # Find the most recently accessed file in the entries directory
-    LAST_ACCESS=$(find entries -type f -printf '%X\n' 2>/dev/null | sort -nr | head -n1)
-    
-    if [ -n "$LAST_ACCESS" ]; then
-        CURRENT_TIME=$(date +%s)
-        ELAPSED=$(( (CURRENT_TIME - LAST_ACCESS) / 60 ))
+    if git-crypt status | grep -q "encrypted: entries/"; then
+        LAST_MOD=$(stat -c %Y entries/ 2>/dev/null || date +%s)
+        CURRENT=$(date +%s)
+        ELAPSED=$(( (CURRENT - LAST_MOD) / 60 ))
 
-        if [ "$ELAPSED" -ge "$IDLE_TIME" ]; then
-            # Lock the repository
+        if [ "$ELAPSED" -ge "$IDLE_MINUTES" ]; then
+            # 1. Sync and push
+            git add entries/ && git commit -m "Auto-save" && git push
+            
+            # 2. Lock the files on disk
             git-crypt lock
-            echo "Security: Vault auto-locked due to $IDLE_TIME minutes of inactivity."
+            
+            # 3. CRITICAL: Wipe the passphrase from memory
+            gpgconf --kill gpg-agent
+            
+            echo "Vault Locked and GPG memory wiped at $(date)" >> /tmp/auto-lock.log
         fi
     fi
-    # Check every 5 minutes
-    sleep 300
+    sleep $CHECK_INTERVAL
 done
