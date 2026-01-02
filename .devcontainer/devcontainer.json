@@ -1,14 +1,27 @@
 {
   "name": "Journaling Vault",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y git-crypt && echo \"$GPG_PRIVATE_KEY\" | gpg --import",
+  
+  // 1. Install git-crypt, import your Secret, and fix permissions
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y git-crypt && echo \"$GPG_PRIVATE_KEY\" | gpg --import && chmod +x .devcontainer/auto-lock.sh",
+
+  // 2. Start the security daemon in the background every time the codespace starts
+  "postStartCommand": "nohup ./.devcontainer/auto-lock.sh > /tmp/auto-lock.log 2>&1 &",
+
   "customizations": {
     "vscode": {
+      // 3. Essential extensions for a smooth journaling experience
       "extensions": [
-        "yzane.markdown-pdf"
-      ]
+        "yzane.markdown-pdf",      // To export entries if needed
+        "jacky.editor-zen-mode",   // For distraction-free writing
+        "shane.gpg-indicator"      // Visual confirmation of your GPG status
+      ],
+      "settings": {
+        "files.autoSave": "onFocusChange",
+        "editor.wordWrap": "on",
+        "editor.zenMode.hideTabs": true,
+        "editor.zenMode.fullScreen": false
+      }
     }
   }
 }
-
-
